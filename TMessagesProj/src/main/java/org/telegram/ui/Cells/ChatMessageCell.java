@@ -2335,6 +2335,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             if (drawSideButton == 3) {
                                 delegate.didPressCommentButton(this);
                             } else {
+                                //TODO AndroidContest  shareButton
                                 delegate.didPressSideButton(this);
                             }
                         }
@@ -3400,6 +3401,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 commentLayout = null;
                 drawCommentNumber = false;
             }
+            //TODO fix this drawing forward arrow
+            drawSideButton = 0;
 
             if (messageObject.type == 0) {
                 drawForwardedName = !isRepliesChat;
