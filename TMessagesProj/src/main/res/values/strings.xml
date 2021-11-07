@@ -374,6 +374,8 @@
     <string name="ChannelUsernamePlaceholder">link</string>
     <!--    AndroidContest-->
     <string name="ChannelPrivateLinkHelp">People can join your channel by following this link. You can revoke the link any time.</string>
+    <string name="MyAndroidContest_RestrictForwardsChannelPopup">Forwards from this channel are restricted</string>
+    <string name="MyAndroidContest_RestrictForwardsGroupPopup">Forwards from this group are restricted</string>
     <string name="MyAndroidContest_RestrictForwardsChannel">Forwards from this channel are restricted.</string>
     <string name="MyAndroidContest_RestrictForwardsGroup">Forwards from this group are restricted.</string>
     <string name="MyAndroidContest_ChannelEditSettingsSavingContentTitle">Saving content</string>

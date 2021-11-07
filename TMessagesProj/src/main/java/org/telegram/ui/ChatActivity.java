@@ -42,6 +42,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
@@ -82,6 +83,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -2005,7 +2007,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                     createDeleteMessagesAlert(null, null);
                 } else if (id == forward) {
-                    openForward();
+                    View itema = actionBar.findViewWithTag(id);
+                    tryOpenForward(itema);
+
                 } else if (id == save_to) {
                     ArrayList<MessageObject> messageObjects = new ArrayList<>();
                     for (int a = 1; a >= 0; a--) {
@@ -7645,6 +7649,24 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         });
         bottomMessagesActionContainer.addView(replyButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP));
 
+        pickerView = new RestrictPickerView(context);
+        pickerViewPopup = new RestrictPopupWindow(
+                pickerView,
+                AndroidUtilities.dp((AndroidUtilities.isTablet() ? 40 : 32) * 6 + 10 + 4 * 5) + 250,
+                AndroidUtilities.dp(AndroidUtilities.isTablet() ? 64 : 56));
+        pickerViewPopup.setOutsideTouchable(true);
+        pickerViewPopup.setClippingEnabled(true);
+        pickerViewPopup.setInputMethodMode(RestrictPopupWindow.INPUT_METHOD_NOT_NEEDED);
+        pickerViewPopup.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED);
+        pickerViewPopup.getContentView().setFocusableInTouchMode(true);
+        pickerViewPopup.getContentView().setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_MENU && event.getRepeatCount() == 0 && event.getAction() == KeyEvent.ACTION_UP && pickerViewPopup != null && pickerViewPopup.isShowing()) {
+                pickerViewPopup.dismiss();
+                return true;
+            }
+            return false;
+        });
+
         forwardButton = new TextView(context);
         forwardButton.setText(LocaleController.getString("Forward", R.string.Forward));
         forwardButton.setGravity(Gravity.CENTER_VERTICAL);
@@ -7657,7 +7679,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         image = context.getResources().getDrawable(R.drawable.input_forward).mutate();
         image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarActionModeDefaultIcon), PorterDuff.Mode.MULTIPLY));
         forwardButton.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
-        forwardButton.setOnClickListener(v -> openForward());
+        forwardButton.setOnClickListener(v -> {
+            tryOpenForward(v);
+        });
         bottomMessagesActionContainer.addView(forwardButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.RIGHT | Gravity.TOP));
 
         contentView.addView(searchContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 51, Gravity.BOTTOM));
@@ -7860,6 +7884,217 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 
         emojiAnimationsOverlay = new EmojiAnimationsOverlay(ChatActivity.this, contentView, chatListView, currentAccount, dialog_id, threadMessageId);
         return fragmentView;
+    }
+
+    private class RestrictPickerView extends View {
+
+        private Drawable backgroundDrawable;
+        private Drawable arrowDrawable;
+        private LinearLayout linearLayout;
+        private TextView restrictTextView;
+        private int arrowX = 100;
+        private int selection;
+        private Paint rectPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private RectF rect = new RectF();
+
+        public void setEmoji(int arrowPosition) {
+            arrowX = arrowPosition;
+            rectPaint.setColor(0x2f000000);
+            invalidate();
+        }
+
+        public void setSelection(int position) {
+            if (selection == position) {
+                return;
+            }
+            selection = position;
+            invalidate();
+        }
+
+        public int getSelection() {
+            return selection;
+        }
+
+        public RestrictPickerView(Context context) {
+            super(context);
+
+            restrictTextView = new TextView(context);
+            if (ChatObject.isChannel(currentChat)) {
+                restrictTextView.setText(LocaleController.getString("MyAndroidContest_RestrictForwardsChannelPopup", R.string.MyAndroidContest_RestrictForwardsChannelPopup));
+            } else {
+                restrictTextView.setText(LocaleController.getString("MyAndroidContest_RestrictForwardsGroupPopup", R.string.MyAndroidContest_RestrictForwardsGroupPopup));
+            }
+
+            restrictTextView.setGravity(Gravity.CENTER_VERTICAL);
+            restrictTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            restrictTextView.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(8), AndroidUtilities.dp(21), AndroidUtilities.dp(8));
+            restrictTextView.setCompoundDrawablePadding(AndroidUtilities.dp(6));
+            restrictTextView.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_actionBarActionModeDefaultSelector), 3));
+            restrictTextView.setTextColor(getThemedColor(Theme.key_actionBarActionModeDefaultIcon));
+            restrictTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+
+            linearLayout = new LinearLayout(context);
+            linearLayout.addView(restrictTextView);
+
+            backgroundDrawable = getResources().getDrawable(R.drawable.stickers_back_all);
+            arrowDrawable = getResources().getDrawable(R.drawable.stickers_back_arrow);
+            Theme.setDrawableColor(backgroundDrawable, getThemedColor(Theme.key_dialogBackground));
+            Theme.setDrawableColor(arrowDrawable, getThemedColor(Theme.key_dialogBackground));
+            backgroundDrawable.setAlpha(200);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+
+            backgroundDrawable.setBounds(0, 0, getMeasuredWidth(), AndroidUtilities.dp(AndroidUtilities.isTablet() ? 60 : 52));
+            backgroundDrawable.draw(canvas);
+
+            int sum = arrowX + getMeasuredWidth() / 2;
+
+            arrowDrawable.setBounds(sum - AndroidUtilities.dp(9), AndroidUtilities.dp(AndroidUtilities.isTablet() ? 55.5f : 47.5f), sum + AndroidUtilities.dp(9), AndroidUtilities.dp((AndroidUtilities.isTablet() ? 55.5f : 47.5f) + 8));
+            arrowDrawable.draw(canvas);
+
+            linearLayout.measure(getMeasuredWidth(), canvas.getHeight());
+            linearLayout.layout(0, 0, getMeasuredWidth(), canvas.getHeight());
+
+            linearLayout.draw(canvas);
+        }
+    }
+
+    private RestrictPopupWindow pickerViewPopup;
+    private RestrictPickerView pickerView;
+
+    private class RestrictPopupWindow extends PopupWindow {
+
+        private ViewTreeObserver.OnScrollChangedListener mSuperScrollListener;
+        private ViewTreeObserver mViewTreeObserver;
+
+        public RestrictPopupWindow() {
+            super();
+            init();
+        }
+
+        public RestrictPopupWindow(Context context) {
+            super(context);
+            init();
+        }
+
+        public RestrictPopupWindow(int width, int height) {
+            super(width, height);
+            init();
+        }
+
+        public RestrictPopupWindow(View contentView) {
+            super(contentView);
+            init();
+        }
+
+        public RestrictPopupWindow(View contentView, int width, int height, boolean focusable) {
+            super(contentView, width, height, focusable);
+            init();
+        }
+
+        public RestrictPopupWindow(View contentView, int width, int height) {
+            super(contentView, width, height);
+            init();
+        }
+
+        private void init() {
+//            if (superListenerField != null) {
+//                try {
+//                    mSuperScrollListener = (ViewTreeObserver.OnScrollChangedListener) superListenerField.get(this);
+//                    superListenerField.set(this, NOP);
+//                } catch (Exception e) {
+//                    mSuperScrollListener = null;
+//                }
+//            }
+        }
+
+        private void unregisterListener() {
+            if (mSuperScrollListener != null && mViewTreeObserver != null) {
+                if (mViewTreeObserver.isAlive()) {
+                    mViewTreeObserver.removeOnScrollChangedListener(mSuperScrollListener);
+                }
+                mViewTreeObserver = null;
+            }
+        }
+
+        private void registerListener(View anchor) {
+            if (mSuperScrollListener != null) {
+                ViewTreeObserver vto = (anchor.getWindowToken() != null) ? anchor.getViewTreeObserver() : null;
+                if (vto != mViewTreeObserver) {
+                    if (mViewTreeObserver != null && mViewTreeObserver.isAlive()) {
+                        mViewTreeObserver.removeOnScrollChangedListener(mSuperScrollListener);
+                    }
+                    if ((mViewTreeObserver = vto) != null) {
+                        vto.addOnScrollChangedListener(mSuperScrollListener);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void showAsDropDown(View anchor, int xoff, int yoff) {
+            try {
+                super.showAsDropDown(anchor, xoff, yoff);
+                registerListener(anchor);
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
+
+        @Override
+        public void update(View anchor, int xoff, int yoff, int width, int height) {
+            super.update(anchor, xoff, yoff, width, height);
+            registerListener(anchor);
+        }
+
+        @Override
+        public void update(View anchor, int width, int height) {
+            super.update(anchor, width, height);
+            registerListener(anchor);
+        }
+
+        @Override
+        public void showAtLocation(View parent, int gravity, int x, int y) {
+            super.showAtLocation(parent, gravity, x, y);
+            unregisterListener();
+        }
+
+        @Override
+        public void dismiss() {
+            setFocusable(false);
+            try {
+                super.dismiss();
+            } catch (Exception ignore) {
+
+            }
+            unregisterListener();
+        }
+    }
+
+    private void displayPopupWindow(View anchorView) {
+        pickerViewPopup.setFocusable(true);
+        int xOffset = (int) (anchorView.getX() / 2.0);
+        int yOffset = (int) (anchorView.getY() / 2.0);
+        int positionArrow = anchorView.getMeasuredWidth() / 2;
+//        pickerView.setEmoji(AndroidUtilities.dp(AndroidUtilities.isTablet() ? 30 : 22) - xOffset + (int) AndroidUtilities.dpf2(0.5f));
+        pickerView.setEmoji(positionArrow);
+        pickerViewPopup.showAsDropDown(anchorView, xOffset, yOffset);
+
+//        pickerViewPopup.showAsDropDown(anchorView, xOffset, -view.getMeasuredHeight() - popupHeight + (view.getMeasuredHeight() - emojiSize) / 2 - yOffset);
+//        PopupWindow popup = new PopupWindow();
+//        View layout = getLayoutInflater().inflate(R.layout.popup_content, null);
+//        popup.setContentView(layout);
+//        // Set content width and height
+//        popup.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
+//        popup.setWidth(WindowManager.LayoutParams.WRAP_CONTENT);
+//        // Closes the popup window when touch outside of it - when looses focus
+//        popup.setOutsideTouchable(true);
+//        popup.setFocusable(true);
+//        // Show anchored to button
+//        popup.setBackgroundDrawable(new BitmapDrawable());
+//        popup.showAsDropDown(anchorView);
     }
 
     private void openForwardingPreview() {
@@ -8696,6 +8931,18 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             videoPlayerContainer.setLayerType(View.LAYER_TYPE_NONE, null);
         }
         contentView.removeView(videoPlayerContainer);
+    }
+
+    public boolean hasNoForwards(){
+        return getCurrentChat().noforwards && replyOriginalChat == null || replyOriginalChat != null && replyOriginalChat.noforwards;
+    }
+
+    private void tryOpenForward(View view) {
+        if (hasNoForwards()) {
+            displayPopupWindow(view);
+        } else {
+            openForward();
+        }
     }
 
     private void openForward() {
@@ -19797,7 +20044,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                 icons.add(R.drawable.msg_unfave);
                             }
                         }
-                        if (!getCurrentChat().noforwards && !selectedObject.isSponsored() && chatMode != MODE_SCHEDULED && !selectedObject.needDrawBluredPreview() && !selectedObject.isLiveLocation() && selectedObject.type != 16) {
+                        if (hasNoForwards() && !selectedObject.isSponsored() && chatMode != MODE_SCHEDULED && !selectedObject.needDrawBluredPreview() && !selectedObject.isLiveLocation() && selectedObject.type != 16) {
                             items.add(LocaleController.getString("Forward", R.string.Forward));
                             options.add(2);
                             icons.add(R.drawable.msg_forward);
@@ -20202,21 +20449,23 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 scrimPopupContainerLayout.addView(messageSeenLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 60));
             }
 
-
             scrimPopupContainerLayout.addView(popupLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, showMessageSeen ? -8 : 0, 0, 0));
-            //check text
-            TLRPC.ChatFull chat = getCurrentChatInfo();
-            if (getCurrentChat().noforwards) {
+            if (hasNoForwards()) {
                 ActionBarPopupWindow.ActionBarPopupWindowLayout popupRestrictedLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, themeDelegate);
+                //
+                //popupRestrictedLayout.requestLayout();
+
                 ActionBarMenuSubItem restrictedCell = new ActionBarMenuSubItem(getParentActivity(), true, true, themeDelegate);
                 if (ChatObject.isChannel(getCurrentChat())) {
                     restrictedCell.setText(LocaleController.getString("MyAndroidContest_RestrictForwardsChannel", R.string.MyAndroidContest_RestrictForwardsChannel));
                 } else {
                     restrictedCell.setText(LocaleController.getString("MyAndroidContest_RestrictForwardsGroup", R.string.MyAndroidContest_RestrictForwardsGroup));
                 }
+                restrictedCell.setMultiline();
 
                 popupRestrictedLayout.addView(restrictedCell);
                 scrimPopupContainerLayout.addView(popupRestrictedLayout);
+                popupRestrictedLayout.getLayoutParams().width = AndroidUtilities.dp(200);
             }
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
