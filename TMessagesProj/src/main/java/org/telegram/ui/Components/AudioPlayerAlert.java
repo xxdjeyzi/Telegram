@@ -99,6 +99,8 @@ import java.util.List;
 
 public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.NotificationCenterDelegate, DownloadController.FileDownloadProgressListener {
 
+    private TLRPC.Chat currentChat;
+
     private ActionBar actionBar;
     private View actionBarShadow;
     private View playerShadow;
@@ -458,6 +460,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             } else {
                 TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-did);
                 if (chat != null) {
+                    currentChat = chat;
                     actionBar.setTitle(chat.title);
                 }
             }
@@ -519,7 +522,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
 
         playerShadow = new View(context);
         playerShadow.setBackgroundColor(getThemedColor(Theme.key_dialogShadowLine));
-        
+
         playerLayout = new FrameLayout(context) {
             @Override
             protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
@@ -1035,14 +1038,18 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
         optionsButton.setShowSubmenuByMove(false);
         optionsButton.setIcon(R.drawable.ic_ab_other);
         optionsButton.setSubMenuOpenSide(2);
-        optionsButton.setAdditionalYOffset(-AndroidUtilities.dp(157));
         if (Build.VERSION.SDK_INT >= 21) {
             optionsButton.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1, AndroidUtilities.dp(18)));
         }
         bottomView.addView(optionsButton, LayoutHelper.createFrame(48, 48, Gravity.LEFT | Gravity.TOP));
-        optionsButton.addSubItem(1, R.drawable.msg_forward, LocaleController.getString("Forward", R.string.Forward));
-        optionsButton.addSubItem(2, R.drawable.msg_shareout, LocaleController.getString("ShareFile", R.string.ShareFile));
-        optionsButton.addSubItem(5, R.drawable.msg_download, LocaleController.getString("SaveToMusic", R.string.SaveToMusic));
+        if (currentChat != null && currentChat.noforwards) {
+            optionsButton.setAdditionalYOffset(-AndroidUtilities.dp(40));
+        } else {
+            optionsButton.addSubItem(1, R.drawable.msg_forward, LocaleController.getString("Forward", R.string.Forward));
+            optionsButton.addSubItem(2, R.drawable.msg_shareout, LocaleController.getString("ShareFile", R.string.ShareFile));
+            optionsButton.addSubItem(5, R.drawable.msg_download, LocaleController.getString("SaveToMusic", R.string.SaveToMusic));
+            optionsButton.setAdditionalYOffset(-AndroidUtilities.dp(157));
+        }
         optionsButton.addSubItem(4, R.drawable.msg_message, LocaleController.getString("ShowInChat", R.string.ShowInChat));
         optionsButton.setShowedFromBottom(true);
         optionsButton.setOnClickListener(v -> optionsButton.toggleSubMenu());
@@ -1421,7 +1428,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             if (UserConfig.selectedAccount != currentAccount) {
                 parentActivity.switchToAccount(currentAccount, true);
             }
-            
+
             Bundle args = new Bundle();
             long did = messageObject.getDialogId();
             if (DialogObject.isEncryptedDialog(did)) {
@@ -2012,7 +2019,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
 
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = new AudioPlayerCell(context, MediaController.getInstance().currentPlaylistIsGlobalSearch() ? AudioPlayerCell.VIEW_TYPE_GLOBAL_SEARCH  : AudioPlayerCell.VIEW_TYPE_DEFAULT, resourcesProvider);
+            View view = new AudioPlayerCell(context, MediaController.getInstance().currentPlaylistIsGlobalSearch() ? AudioPlayerCell.VIEW_TYPE_GLOBAL_SEARCH : AudioPlayerCell.VIEW_TYPE_DEFAULT, resourcesProvider);
             return new RecyclerListView.Holder(view);
         }
 
@@ -2408,7 +2415,7 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
                 final int width = child.getWidth();
                 final int height = child.getHeight();
                 final int saveCount = canvas.saveLayer(0, 0, width, height, null, Canvas.ALL_SAVE_FLAG);
-                result = super. drawChild(canvas, child, drawingTime);
+                result = super.drawChild(canvas, child, drawingTime);
                 final float gradientStart = width * (1f - clipProgress[index]);
                 final float gradientEnd = gradientStart + gradientSize;
                 gradientMatrix.setTranslate(gradientStart, 0);

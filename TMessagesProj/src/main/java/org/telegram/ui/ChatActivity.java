@@ -1965,6 +1965,10 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(final int id) {
+                if (hasNoForwards() && (id == copy || id == forward || id == save_to)) {
+                    displayPopupWindow(actionBar.findViewWithTag(id));
+                    return;
+                }
                 if (id == -1) {
                     if (actionBar.isActionModeShowed()) {
                         clearSelectionMode();
@@ -2007,9 +2011,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                     createDeleteMessagesAlert(null, null);
                 } else if (id == forward) {
-                    View itema = actionBar.findViewWithTag(id);
-                    tryOpenForward(itema);
-
+                    openForward();
                 } else if (id == save_to) {
                     ArrayList<MessageObject> messageObjects = new ArrayList<>();
                     for (int a = 1; a >= 0; a--) {
@@ -7680,7 +7682,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         image.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarActionModeDefaultIcon), PorterDuff.Mode.MULTIPLY));
         forwardButton.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
         forwardButton.setOnClickListener(v -> {
-            tryOpenForward(v);
+            if (hasNoForwards()) {
+                displayPopupWindow(v);
+            } else {
+                openForward();
+            }
         });
         bottomMessagesActionContainer.addView(forwardButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.RIGHT | Gravity.TOP));
 
@@ -8934,15 +8940,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     }
 
     public boolean hasNoForwards() {
-        return getCurrentChat().noforwards && replyOriginalChat == null || replyOriginalChat != null && replyOriginalChat.noforwards;
-    }
-
-    private void tryOpenForward(View view) {
-        if (hasNoForwards()) {
-            displayPopupWindow(view);
-        } else {
-            openForward();
-        }
+        return currentChat != null && (currentChat.noforwards && replyOriginalChat == null || replyOriginalChat != null && replyOriginalChat.noforwards);
     }
 
     private void openForward() {
@@ -19709,20 +19707,17 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 text = LocaleController.getString("Copy", R.string.Copy);
                 break;
             case SAVE_GALLERY:
+            case SAVE_GALLERY_7:
                 icon = R.drawable.msg_gallery;
                 text = LocaleController.getString("SaveToGallery", R.string.SaveToGallery);
                 break;
             case APPLY_FILE:
                 icon = _icon == EmptyOverrideIcon ? R.drawable.msg_language : _icon;
-                text = _text == EmptyOverrideName ? LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile) : _text;
                 break;
             case SHARE:
                 icon = R.drawable.msg_shareout;
                 text = LocaleController.getString("ShareFile", R.string.ShareFile);
-                break;
-            case SAVE_GALLERY_7:
-                icon = R.drawable.msg_gallery;
-                text = LocaleController.getString("SaveToGallery", R.string.SaveToGallery);
                 break;
             case REPLY:
                 icon = R.drawable.msg_reply;
@@ -19730,11 +19725,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 break;
             case ADD_STICKER:
                 icon = R.drawable.msg_sticker;
-                text = _text == EmptyOverrideName ? LocaleController.getString("AddToMasks", R.string.AddToMasks) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("AddToMasks", R.string.AddToMasks) : _text;
                 break;
             case SAVE_TO:
                 icon = R.drawable.msg_download;
-                text = _text == EmptyOverrideName ? LocaleController.getString("SaveToMusic", R.string.SaveToMusic) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("SaveToMusic", R.string.SaveToMusic) : _text;
                 break;
             case SAVE_GIF:
                 icon = R.drawable.msg_gif;
@@ -19766,7 +19761,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 break;
             case CALL_BACK:
                 icon = R.drawable.msg_callback;
-                text = _text == EmptyOverrideName ? LocaleController.getString("CallBack", R.string.CallBack) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("CallBack", R.string.CallBack) : _text;
                 break;
             case RATE_CALL:
                 icon = R.drawable.msg_fave;
@@ -19786,7 +19781,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 break;
             case REPORT:
                 icon = _icon == EmptyOverrideIcon ? R.drawable.msg_block2 : _icon;
-                text = _text == EmptyOverrideName ? LocaleController.getString("BlockContact", R.string.BlockContact) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("BlockContact", R.string.BlockContact) : _text;
                 break;
             case CANCEL_SENDING:
                 icon = R.drawable.msg_delete;
@@ -19798,11 +19793,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 break;
             case STOP_QUIZ:
                 icon = R.drawable.msg_pollstop;
-                text = _text == EmptyOverrideName ? LocaleController.getString("StopQuiz", R.string.StopQuiz) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("StopQuiz", R.string.StopQuiz) : _text;
                 break;
             case VIEW_THREAD:
                 icon = R.drawable.msg_viewreplies;
-                text = _text == EmptyOverrideName ? LocaleController.getString("ViewThread", R.string.ViewThread) : _text;
+                text = _text.equals(EmptyOverrideName) ? LocaleController.getString("ViewThread", R.string.ViewThread) : _text;
                 break;
             case SEND_NOW:
                 icon = R.drawable.outline_send;
@@ -20078,13 +20073,13 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                     menuOptions.add(createChatMenuOption(ChatMenuType.SHARE));
                                 }
                             } else if (!hasNoForwards() && selectedObject.isMusic()) {
-                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO,LocaleController.getString("SaveToMusic", R.string.SaveToMusic)));
+                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO, LocaleController.getString("SaveToMusic", R.string.SaveToMusic)));
                                 menuOptions.add(createChatMenuOption(ChatMenuType.SHARE));
                             } else if (!hasNoForwards() && selectedObject.getDocument() != null) {
                                 if (MessageObject.isNewGifDocument(selectedObject.getDocument())) {
                                     menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_GIF));
                                 }
-                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO,LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
+                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO, LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
                                 menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_GIF));
                             } else {
                                 if (!hasNoForwards() && !selectedObject.needDrawBluredPreview()) {
@@ -20092,15 +20087,15 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                 }
                             }
                         } else if (type == 5) {
-                            menuOptions.add(createChatMenuOption(ChatMenuType.APPLY_FILE,LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile)));
+                            menuOptions.add(createChatMenuOption(ChatMenuType.APPLY_FILE, LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile)));
                             if (!hasNoForwards()) {
-                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO,LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
+                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO, LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
                                 menuOptions.add(createChatMenuOption(ChatMenuType.SHARE));
                             }
                         } else if (type == 10) {
-                            menuOptions.add(createChatMenuOption(ChatMenuType.APPLY_FILE,LocaleController.getString("ApplyThemeFile", R.string.ApplyThemeFile)));
+                            menuOptions.add(createChatMenuOption(ChatMenuType.APPLY_FILE, LocaleController.getString("ApplyThemeFile", R.string.ApplyThemeFile)));
                             if (!hasNoForwards()) {
-                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO,LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
+                                menuOptions.add(createChatMenuOption(ChatMenuType.SAVE_TO, LocaleController.getString("SaveToDownloads", R.string.SaveToDownloads)));
                                 menuOptions.add(createChatMenuOption(ChatMenuType.SHARE));
                             }
                         } else if (type == 6 && !hasNoForwards()) {
