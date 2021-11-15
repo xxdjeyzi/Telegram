@@ -259,6 +259,14 @@ import java.util.regex.Pattern;
 public class ChatActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, LocationActivity.LocationActivityDelegate, ChatAttachAlertDocumentLayout.DocumentSelectActivityDelegate {
 
     protected TLRPC.Chat currentChat;
+
+    private void setCurrentChat(TLRPC.Chat chat){
+        currentChat = chat;
+        if(currentChat!=null){
+
+        }
+    }
+
     protected TLRPC.User currentUser;
     protected TLRPC.EncryptedChat currentEncryptedChat;
     private boolean userBlocked;

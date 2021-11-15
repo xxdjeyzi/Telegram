@@ -622,6 +622,7 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
             permanentLinkView.loadUsers(invite, chatId);
             checkTextView.setVisibility(!isPrivate && checkTextView.length() != 0 ? View.VISIBLE : View.GONE);
             if (isPrivate) {
+                linearLayoutSavingContentContainer.setVisibility(View.VISIBLE);
                 savingContentInfoCell.setVisibility(View.VISIBLE);
                 savingContentInfoCell.setText(LocaleController.getString("MyAndroidContest_ChannelEditSettingsSavingContentDescription", R.string.MyAndroidContest_ChannelEditSettingsSavingContentDescription));
 
@@ -632,6 +633,7 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
                 manageLinksInfoCell.setBackground(Theme.getThemedDrawable(typeInfoCell.getContext(), R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
 
             } else {
+                linearLayoutSavingContentContainer.setVisibility(View.GONE);
                 savingContentInfoCell.setVisibility(View.GONE);
 
                 manageLinksInfoCell.setText(LocaleController.getString("ManageLinksInfoHelp", R.string.ManageLinksInfoHelp));
